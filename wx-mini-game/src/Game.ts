@@ -37,6 +37,7 @@ export class Game {
   private deathCount = 0;
   private hasRevived = false;
   private interstitialInterval = 3;
+  private stuckTimer = 0;
 
   constructor(canvas: any, screenW: number, screenH: number) {
     this.screenW = screenW;
@@ -107,6 +108,7 @@ export class Game {
     this.state = GameState.READY;
     this.gameOverAlpha = 0;
     this.hasRevived = false;
+    this.stuckTimer = 0;
 
     this.renderer.camera.x = this.pelicanBike.position.x - this.screenW * 0.35;
     this.renderer.camera.y = this.pelicanBike.position.y - this.screenH * 0.4;
@@ -154,6 +156,16 @@ export class Game {
 
       if (this.pelicanBike.shouldCrash()) {
         this.startCrash();
+      }
+
+      // Stuck detection: if speed is near zero for too long while playing, crash
+      if (this.pelicanBike.speed < 0.3 && this.pelicanBike.distance > 5) {
+        this.stuckTimer += dt;
+        if (this.stuckTimer > 2000) {
+          this.startCrash();
+        }
+      } else {
+        this.stuckTimer = 0;
       }
     }
 
@@ -224,9 +236,12 @@ export class Game {
     }
 
     // Physics step
-    if (this.state !== GameState.GAME_OVER) {
+    if (this.state === GameState.PLAYING || this.state === GameState.READY) {
       this.physics.update(dt);
       this.pelicanBike.update(dt);
+    } else if (this.state === GameState.CRASHING) {
+      this.physics.update(dt);
+      // pelicanBike.update already called in CRASHING block above
     }
 
     // Update terrain
