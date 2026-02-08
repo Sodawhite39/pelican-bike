@@ -1,0 +1,24 @@
+{
+  "description": "鹈鹕骑自行车 - 物理平衡小游戏",
+  "packOptions": {
+    "ignore": [
+      { "type": "folder", "value": "node_modules" },
+      { "type": "folder", "value": "src" },
+      { "type": "file", "value": "tsconfig.json" },
+      { "type": "file", "value": "package.json" },
+      { "type": "file", "value": "bun.lock" },
+      { "type": "file", "value": "build.sh" }
+    ]
+  },
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "minified": true,
+    "urlCheck": false
+  },
+  "compileType": "game",
+  "appid": "",
+  "projectname": "pelican-bike",
+  "libVersion": "3.3.4",
+  "condition": {}
+}

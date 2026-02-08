@@ -1,0 +1,17 @@
+{
+  "name": "pelican-bike-wx",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch"
+  },
+  "dependencies": {
+    "matter-js": "^0.20.0"
+  },
+  "devDependencies": {
+    "@types/matter-js": "^0.19.7",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0"
+  }
+}
