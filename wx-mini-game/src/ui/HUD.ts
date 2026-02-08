@@ -38,7 +38,7 @@ export class HUD {
 
     // Distance counter (top right)
     ctx.font = 'bold 28px sans-serif';
-    ctx.fillStyle = COLORS.TEXT;
+    ctx.fillStyle = '#FFF';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'top';
     ctx.fillText(txt.distance(distance), width - 16, 32);

@@ -24,6 +24,19 @@ interface WxShareOptions {
   query?: string;
 }
 
+interface WxRewardedVideoAd {
+  show(): Promise<void>;
+  load(): Promise<void>;
+  onClose(callback: (res: { isEnded: boolean }) => void): void;
+  onError(callback: (err: any) => void): void;
+}
+
+interface WxInterstitialAd {
+  show(): Promise<void>;
+  onClose(callback: () => void): void;
+  onError(callback: (err: any) => void): void;
+}
+
 declare const wx: {
   getSystemInfoSync(): WxSystemInfo;
   createCanvas(): any;
@@ -36,6 +49,17 @@ declare const wx: {
   onShareAppMessage(callback: () => WxShareOptions): void;
   onShareTimeline(callback: () => WxShareOptions): void;
   shareAppMessage(options: WxShareOptions): void;
+
+  // Storage
+  setStorageSync(key: string, value: any): void;
+  getStorageSync(key: string): any;
+
+  // Ads
+  createRewardedVideoAd(options: { adUnitId: string }): WxRewardedVideoAd;
+  createInterstitialAd(options: { adUnitId: string }): WxInterstitialAd;
+
+  // Audio
+  createWebAudioContext(): AudioContext;
 };
 
 declare function requestAnimationFrame(callback: (time: number) => void): number;

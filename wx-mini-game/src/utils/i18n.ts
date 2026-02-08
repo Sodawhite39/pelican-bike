@@ -6,10 +6,16 @@ const texts = {
   startHint: '点击屏幕开始！',
   gameOver: '游戏结束',
   traveled: (d: number) => `你的鹈鹕骑了 ${Math.floor(d)} 米！`,
+  bestRecord: (d: number) => `最佳纪录：${Math.floor(d)} 米`,
+  newRecord: '🎉 新纪录！',
   playAgain: '再来一局',
   shareWx: '分享给好友',
+  reviveAd: '📺 看广告复活',
+  doubleAd: '📺 双倍距离',
   shareText: (d: number) => `🦩 我的鹈鹕骑了 ${Math.floor(d)} 米！你能超过吗？`,
   balance: '平衡',
+  soundOn: '🔊',
+  soundOff: '🔇',
 } as const;
 
 export function t() {

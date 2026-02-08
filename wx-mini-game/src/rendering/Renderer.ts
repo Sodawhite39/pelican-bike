@@ -2,6 +2,7 @@ import { Camera } from './Camera';
 import { TerrainRenderer } from './TerrainRenderer';
 import { BikeRenderer } from './BikeRenderer';
 import { PelicanRenderer } from './PelicanRenderer';
+import { BackgroundRenderer } from './BackgroundRenderer';
 import { COLORS } from '../utils/constants';
 
 export class Renderer {
@@ -12,6 +13,7 @@ export class Renderer {
   terrain = new TerrainRenderer();
   bike = new BikeRenderer();
   pelican = new PelicanRenderer();
+  background = new BackgroundRenderer();
 
   constructor(canvas: any, width: number, height: number) {
     this.ctx = canvas.getContext('2d');

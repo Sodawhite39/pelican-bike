@@ -3,6 +3,8 @@ import { TerrainManager } from './terrain/TerrainChunk';
 import { PelicanBike } from './entities/PelicanBike';
 import { Renderer } from './rendering/Renderer';
 import { TouchInputManager } from './input/TouchInputManager';
+import { SoundManager } from './audio/SoundManager';
+import { AdManager } from './ads/AdManager';
 import { HUD } from './ui/HUD';
 import { GameOverScreen } from './ui/GameOverScreen';
 import { t } from './utils/i18n';
@@ -20,6 +22,8 @@ export class Game {
   private terrain: TerrainManager;
   private pelicanBike!: PelicanBike;
   private input: TouchInputManager;
+  private sound: SoundManager;
+  private ads: AdManager;
   private hud: HUD;
   private gameOver: GameOverScreen;
   private state: GameState = GameState.READY;
@@ -28,6 +32,11 @@ export class Game {
   private lastTime = 0;
   private screenW: number;
   private screenH: number;
+  private bestDistance = 0;
+  private gameOverSoundPlayed = false;
+  private deathCount = 0;
+  private hasRevived = false;
+  private interstitialInterval = 3;
 
   constructor(canvas: any, screenW: number, screenH: number) {
     this.screenW = screenW;
@@ -35,8 +44,16 @@ export class Game {
     this.renderer = new Renderer(canvas, screenW, screenH);
     this.physics = new PhysicsWorld();
     this.input = new TouchInputManager(screenW, screenH);
+    this.sound = new SoundManager();
+    this.ads = new AdManager();
     this.hud = new HUD();
     this.gameOver = new GameOverScreen();
+
+    // Load best distance from storage
+    try {
+      const saved = (wx as any).getStorageSync('bestDistance');
+      if (saved) this.bestDistance = Number(saved);
+    } catch (_e) {}
 
     this.baseY = screenH * 0.6;
     this.terrain = new TerrainManager(this.physics, this.baseY);
@@ -89,6 +106,7 @@ export class Game {
     this.pelicanBike = new PelicanBike(this.physics, startX, actualGroundY);
     this.state = GameState.READY;
     this.gameOverAlpha = 0;
+    this.hasRevived = false;
 
     this.renderer.camera.x = this.pelicanBike.position.x - this.screenW * 0.35;
     this.renderer.camera.y = this.pelicanBike.position.y - this.screenH * 0.4;
@@ -98,6 +116,7 @@ export class Game {
     if (this.state !== GameState.PLAYING) return;
     this.state = GameState.CRASHING;
     this.pelicanBike.triggerCrash();
+    this.sound.playCrash();
   }
 
   update(time: number) {
@@ -114,9 +133,11 @@ export class Game {
     if (this.state === GameState.PLAYING) {
       if (this.input.isDown('ArrowUp')) {
         this.pelicanBike.pedal();
+        this.sound.playPedal();
       }
       if (this.input.isDown('ArrowDown')) {
         this.pelicanBike.brake();
+        this.sound.playBrake();
       }
       if (this.input.isDown('ArrowLeft')) {
         this.pelicanBike.leanLeft();
@@ -128,6 +149,9 @@ export class Game {
         this.pelicanBike.turnAround();
       }
 
+      // Update wind sound based on speed
+      this.sound.updateWind(this.pelicanBike.speed);
+
       if (this.pelicanBike.shouldCrash()) {
         this.startCrash();
       }
@@ -135,24 +159,66 @@ export class Game {
 
     if (this.state === GameState.CRASHING) {
       this.pelicanBike.update(dt);
+      this.sound.stopWind();
       if (this.pelicanBike.isSettled()) {
         this.state = GameState.GAME_OVER;
+        this.gameOverSoundPlayed = false;
+        this.deathCount++;
+
+        // Save best distance
+        const dist = this.pelicanBike.distance;
+        if (dist > this.bestDistance) {
+          this.bestDistance = dist;
+          try { (wx as any).setStorageSync('bestDistance', this.bestDistance); } catch (_e) {}
+        }
       }
     }
 
     if (this.state === GameState.GAME_OVER) {
       this.gameOverAlpha = Math.min(1, this.gameOverAlpha + 0.03);
 
+      if (!this.gameOverSoundPlayed && this.gameOverAlpha > 0.3) {
+        this.sound.playGameOver();
+        this.gameOverSoundPlayed = true;
+      }
+
       // Handle tap for game over UI
       const tap = this.input.lastTap;
       if (tap && !tap.consumed) {
-        const result = this.gameOver.handleClick(tap.x, tap.y, this.pelicanBike.distance);
+        const result = this.gameOver.handleClick(
+          tap.x, tap.y,
+          this.pelicanBike.distance,
+          this.bestDistance,
+          this.deathCount,
+        );
         tap.consumed = true;
         if (result === 'playAgain') {
+          // Show interstitial every N deaths
+          if (this.deathCount % this.interstitialInterval === 0) {
+            this.ads.showInterstitial();
+          }
           this.reset();
+        } else if (result === 'revive' && !this.hasRevived) {
+          this.ads.showRewardedAd().then((success) => {
+            if (success) {
+              this.hasRevived = true;
+              // Revive: go back to PLAYING state
+              this.state = GameState.PLAYING;
+              this.gameOverAlpha = 0;
+            }
+          });
+        } else if (result === 'double') {
+          this.ads.showRewardedAd().then((success) => {
+            if (success) {
+              const doubled = this.pelicanBike.distance * 2;
+              if (doubled > this.bestDistance) {
+                this.bestDistance = doubled;
+                try { (wx as any).setStorageSync('bestDistance', this.bestDistance); } catch (_e) {}
+              }
+            }
+          });
         }
       } else if (this.input.wasPressed('Space') && !tap) {
-        // Fallback: any tap restarts
         this.reset();
       }
     }
@@ -173,7 +239,15 @@ export class Game {
   }
 
   draw() {
-    this.renderer.clear();
+    // Background draws in mixed space (sky in screen space, parallax in world space)
+    this.renderer.background.draw(
+      this.renderer.context,
+      this.renderer.camera.x,
+      this.renderer.camera.y,
+      this.screenW,
+      this.screenH,
+      this.baseY,
+    );
 
     // World space drawing
     this.renderer.beginWorld();
@@ -223,6 +297,7 @@ export class Game {
         this.screenW,
         this.screenH,
         this.pelicanBike.distance,
+        this.bestDistance,
         this.gameOverAlpha,
       );
     }
