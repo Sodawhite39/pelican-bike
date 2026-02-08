@@ -239,6 +239,8 @@ export class Game {
   }
 
   draw() {
+    this.renderer.clear();
+
     // Background draws in mixed space (sky in screen space, parallax in world space)
     this.renderer.background.draw(
       this.renderer.context,
